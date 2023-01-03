@@ -15,26 +15,30 @@ type Problems struct {
 }
 
 func main() {
-
-	csvFileName := flag.String("csv", "problems.csv", "a name of the csv file formated 'question,anser'")
+	wd, err := os.Getwd()
+	if err != nil {
+		Exit("wd err")
+	}
+	defautlFileName := strings.Join([]string{wd, "problems.csv"}, "/")
+	csvFileName := flag.String("csv", defautlFileName, "a name of the csv file formated 'question,anser'")
 	file, err := os.Open(*csvFileName)
 
 	if err != nil {
-		exit(fmt.Sprintf("failed to open file name: %v. ", *csvFileName))
+		Exit(fmt.Sprintf("failed to open file name: %v. ", *csvFileName))
 	}
 
 	reader := csv.NewReader(file)
 	lines, err := reader.ReadAll()
 
 	if err != nil {
-		exit("faild to parse file")
+		Exit("faild to parse file")
 	}
-	problems := parsedProblems(lines)
+	problems := ParsedProblems(lines)
 	score := 0
-	timer := time.NewTimer(time.Duration(2) * time.Second)
+	timer := time.NewTimer(time.Duration(10) * time.Second)
 
-	for index, value := range problems {
-		fmt.Printf("Problem #%d: %s= ", index+1, value.question)
+	for index, problem := range problems {
+		fmt.Printf("Problem #%d: %s= ", index+1, problem.question)
 		answerCh := make(chan string)
 		var answer string
 		go Quiz(answerCh)
@@ -43,7 +47,7 @@ func main() {
 			fmt.Printf("\nTime Over \nToal Score: %v\n", score)
 			return
 		case answer = <-answerCh:
-			if answer != value.answer {
+			if answer != problem.answer {
 				fmt.Println("inCorrect")
 			} else {
 				score++
@@ -61,7 +65,7 @@ func Quiz(answerCh chan string) {
 	answerCh <- answer
 }
 
-func parsedProblems(lines [][]string) []Problems {
+func ParsedProblems(lines [][]string) []Problems {
 	problems := make([]Problems, len(lines))
 	for index, value := range lines {
 		problems[index] = Problems{
@@ -72,7 +76,7 @@ func parsedProblems(lines [][]string) []Problems {
 	return problems
 }
 
-func exit(msg string) {
+func Exit(msg string) {
 	fmt.Println(msg)
 	os.Exit(1)
 }
