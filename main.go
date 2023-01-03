@@ -5,71 +5,71 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
+type Problems struct {
+	question string
+	answer   string
+}
+
 func main() {
-	csvFilename := flag.String("csv", "problems.csv", "a csv file name in the format of 'questions,answer'")
-	limit := flag.Int("limit", 3, "duratioion of quiz game")
-	flag.Parse()
-	file, err := os.Open(*csvFilename)
-	if err != nil {
-		exit(fmt.Sprintf("failed to open CSV file: %s\n", *csvFilename))
-	}
-	r := csv.NewReader(file)
-	lines, err := r.ReadAll()
-	if err != nil {
-		exit("failed to parse provided file")
-	}
-	problems := ParseLines(lines)
-	correct := 0
-	timer := time.NewTimer(time.Duration(*limit) * time.Second)
 
-	for i, p := range problems {
+	csvFileName := flag.String("csv", "problems.csv", "a name of the csv file formated 'question,anser'")
+	file, err := os.Open(*csvFileName)
 
-		fmt.Printf("problem #%d: %s=\n", i+1, p.q)
+	if err != nil {
+		exit(fmt.Sprintf("failed to open file name: %v. ", *csvFileName))
+	}
+
+	reader := csv.NewReader(file)
+	lines, err := reader.ReadAll()
+
+	if err != nil {
+		exit("faild to parse file")
+	}
+	problems := parsedProblems(lines)
+	score := 0
+	timer := time.NewTimer(time.Duration(2) * time.Second)
+
+	for index, value := range problems {
+		fmt.Printf("Problem #%d: %s= ", index+1, value.question)
 		answerCh := make(chan string)
-
-		go func() {
-			var answer string
-			fmt.Scanf("%s \n", &answer)
-			answerCh <- answer
-		}()
-
+		var answer string
+		go Quiz(answerCh)
 		select {
 		case <-timer.C:
-			fmt.Printf("\n time over \n total score: %d.\n", correct)
+			fmt.Printf("\nTime Over \nToal Score: %v\n", score)
 			return
-		case answer := <-answerCh:
-
-			if answer == p.a {
-				correct++
-				fmt.Println("correct")
+		case answer = <-answerCh:
+			if answer != value.answer {
+				fmt.Println("inCorrect")
 			} else {
-				fmt.Println("incorrect")
+				score++
+				fmt.Printf("Correct!\ncurrent score: %v \n", score)
 			}
-
 		}
 
 	}
-	fmt.Printf("total score: %d.\n", correct)
-
+	fmt.Printf("Total score: %v\n", score)
 }
 
-func ParseLines(lines [][]string) []Problems {
-	ret := make([]Problems, len(lines))
-	for index, values := range lines {
-		ret[index] = Problems{
-			q: values[0],
-			a: values[1],
+func Quiz(answerCh chan string) {
+	var answer string
+	fmt.Scanf("%s\n", &answer)
+	answerCh <- answer
+}
+
+func parsedProblems(lines [][]string) []Problems {
+	problems := make([]Problems, len(lines))
+	for index, value := range lines {
+		problems[index] = Problems{
+			question: value[0],
+			answer:   strings.TrimSpace(value[1]),
 		}
 	}
-	return ret
-}
-
-type Problems struct {
-	q string
-	a string
+	return problems
 }
 
 func exit(msg string) {
